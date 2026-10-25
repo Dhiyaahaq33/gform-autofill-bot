@@ -60,6 +60,26 @@ def start_command(update: Update, context: CallbackContext):
     )
     update.message.reply_text(welcome_text, parse_mode=ParseMode.MARKDOWN)
 
+def status_command(update: Update, context: CallbackContext):
+    """Handles /status command"""
+    status_msg = (
+        "📊 *STATUS SISTEM & BOT GOOGLE FORM AUTO-FILLER*\n"
+        "───────────────────────\n"
+        "🟢 *Status Server:* Online 24/7 (Vercel Serverless Edge)\n"
+        "🤖 *Bot Identity:* `@JohannesHaq7bot`\n"
+        "🌐 *Platform Cloud:* Vercel Python Runtime (`gform-autofill-bot.vercel.app`)\n"
+        "🧠 *AI & Response Engine:* Dual Mode (Universal Context-Adaptive Heuristics + Gemini Flash)\n"
+        "📝 *Tipe Soal Didukung:* Pilihan Ganda, Dropdown, Skala 1–5, Matriks Grid, Checklist, Isian Singkat, Esai/Paragraf, Tanggal & Waktu\n"
+        "🚨 *File Upload Sentinel:* Aktif (Deteksi Otomatis Soal Berkas/Dokumen Penting)\n"
+        "📑 *Multi-Section Engine:* Aktif (`pageHistory` Dynamic Chain Resolver)\n"
+        "🛡️ *Anti-Detection System:* Rotasi User-Agent (Chrome, Firefox, Safari iOS, Android) & Randomized Jitter\n"
+        "⚡ *Metode Pengiriman:* Multi-threaded Concurrent Engine (~0.3s per respon)\n"
+        "⏱️ *Koneksi Webhook:* Terhubung & Aktif\n"
+        "───────────────────────\n"
+        "Status: *Ready!* Silakan kirimkan link Google Form kamu untuk mulai pengisian otomatis."
+    )
+    update.message.reply_text(status_msg, parse_mode=ParseMode.MARKDOWN)
+
 def handle_url_or_message(update: Update, context: CallbackContext):
     """Detects Google Form link or custom count input from user"""
     user_id = update.effective_user.id
@@ -344,6 +364,7 @@ def main():
     dp = updater.dispatcher
 
     dp.add_handler(CommandHandler("start", start_command))
+    dp.add_handler(CommandHandler("status", status_command))
     dp.add_handler(CallbackQueryHandler(handle_callback_query))
     dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_url_or_message))
 

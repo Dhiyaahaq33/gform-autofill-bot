@@ -21,13 +21,20 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_API_BASE = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
 
 def call_tg(method: str, payload: dict) -> dict:
-    """Helper to call Telegram Bot API"""
+    """Helper to call Telegram Bot API with automatic Markdown entity fallback"""
     if not TELEGRAM_BOT_TOKEN:
         logger.error("TELEGRAM_BOT_TOKEN is not configured.")
         return {}
     try:
-        r = requests.post(f"{TELEGRAM_API_BASE}/{method}", json=payload, timeout=10)
-        return r.json()
+        r = requests.post(f"{TELEGRAM_API_BASE}/{method}", json=payload, timeout=12)
+        res = r.json()
+        if not res.get("ok") and "can't parse entities" in res.get("description", "").lower():
+            # If Telegram rejects markdown formatting, retry cleanly as plain text
+            payload_plain = dict(payload)
+            payload_plain.pop("parse_mode", None)
+            r_fallback = requests.post(f"{TELEGRAM_API_BASE}/{method}", json=payload_plain, timeout=12)
+            return r_fallback.json()
+        return res
     except Exception as e:
         logger.error(f"Telegram API call error ({method}): {e}")
         return {}
@@ -106,12 +113,38 @@ class handler(BaseHTTPRequestHandler):
                 welcome = (
                     "👋 *Halo! Selamat Datang di Google Form Auto-Filler Bot (Serverless Vercel).* 🚀\n\n"
                     "Bot ini aktif 24/7 di cloud tanpa perlu server VPS atau laptop nyala.\n\n"
+                    "📌 *Perintah Tersedia:*\n"
+                    "• `/status` - Cek kesehatan sistem, server Vercel, dan engine AI\n\n"
                     "👉 *Cara Pakai:*\n"
                     "Cukup *kirimkan link Google Form* kamu ke chat ini."
                 )
                 call_tg("sendMessage", {
                     "chat_id": chat_id,
                     "text": welcome,
+                    "parse_mode": "Markdown"
+                })
+                return
+
+            if text.startswith("/status"):
+                status_msg = (
+                    "📊 *STATUS SISTEM & BOT GOOGLE FORM AUTO-FILLER*\n"
+                    "───────────────────────\n"
+                    "🟢 *Status Server:* Online 24/7 (Vercel Serverless Edge)\n"
+                    "🤖 *Bot Identity:* `@JohannesHaq7bot`\n"
+                    "🌐 *Platform Cloud:* Vercel Python Runtime (`gform-autofill-bot.vercel.app`)\n"
+                    "🧠 *AI & Response Engine:* Dual Mode (Universal Context-Adaptive Heuristics + Gemini Flash)\n"
+                    "📝 *Tipe Soal Didukung:* Pilihan Ganda, Dropdown, Skala 1–5, Matriks Grid, Checklist, Isian Singkat, Esai/Paragraf, Tanggal & Waktu\n"
+                    "🚨 *File Upload Sentinel:* Aktif (Deteksi Otomatis Soal Berkas/Dokumen Penting)\n"
+                    "📑 *Multi-Section Engine:* Aktif (`pageHistory` Dynamic Chain Resolver)\n"
+                    "🛡️ *Anti-Detection System:* Rotasi User-Agent (Chrome, Firefox, Safari iOS, Android) & Randomized Jitter\n"
+                    "⚡ *Metode Pengiriman:* Multi-threaded Concurrent Engine (~0.3s per respon)\n"
+                    "⏱️ *Koneksi Webhook:* Terhubung & Aktif\n"
+                    "───────────────────────\n"
+                    "Status: *Ready!* Silakan kirimkan link Google Form kamu untuk mulai pengisian otomatis."
+                )
+                call_tg("sendMessage", {
+                    "chat_id": chat_id,
+                    "text": status_msg,
                     "parse_mode": "Markdown"
                 })
                 return
@@ -200,10 +233,26 @@ class handler(BaseHTTPRequestHandler):
 
             except Exception as parse_err:
                 logger.error(f"Parse error: {parse_err}")
+                err_str = str(parse_err)
+                if "401" in err_str or "unauthorized" in err_str.lower():
+                    err_msg = (
+                        "🔒 *FORM MEMERLUKAN LOGIN GOOGLE / TERKUNCI!*\n\n"
+                        "Google Form ini tidak dapat diakses publik oleh bot karena:\n"
+                        "1. Opsi *'Batasi ke 1 tanggapan'* (perlu login Google) aktif, atau\n"
+                        "2. Form dibatasi hanya untuk email organisasi internal tertentu, atau\n"
+                        "3. Memiliki pertanyaan Upload File yang mewajibkan login Drive.\n\n"
+                        "💡 *Solusi untuk Pemilik Form:*\n"
+                        "Buka Google Form ➔ *Setelan (Settings)* ➔ Bagian *Tanggapan (Responses)* ➔ Matikan centang *'Batasi ke 1 tanggapan'* (*Limit to 1 response*)."
+                    )
+                else:
+                    err_msg = (
+                        f"❌ *Gagal Membaca Form:*\n`{err_str}`\n\n"
+                        "Pastikan link Google Form benar dan dapat diakses secara publik tanpa login."
+                    )
                 call_tg("editMessageText", {
                     "chat_id": chat_id,
                     "message_id": loading_msg_id,
-                    "text": f"❌ *Gagal memuat form:* {str(parse_err)}\n\nPastikan opsi *'Batasi ke 1 tanggapan'* (perlu login Google) sudah dinonaktifkan.",
+                    "text": err_msg,
                     "parse_mode": "Markdown"
                 })
 
