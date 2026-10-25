@@ -22,7 +22,8 @@ class GoogleFormParser:
         5: "linear_scale",
         7: "grid",
         9: "date",
-        10: "time"
+        10: "time",
+        13: "file_upload"
     }
 
     def __init__(self, form_url: str):
@@ -97,12 +98,13 @@ class GoogleFormParser:
             raw_items = data[1][1]
 
         self.questions = []
+        self.file_upload_items = []
         page_count = 0
         for item in raw_items:
             if not isinstance(item, list) or len(item) < 4:
                 continue
 
-            q_title = item[1]
+            q_title = item[1] or ""
             q_desc = item[2] if len(item) > 2 else ""
             q_type_code = item[3] if len(item) > 3 else 0
             q_type_name = self.QUESTION_TYPES.get(q_type_code, "other")
@@ -111,6 +113,33 @@ class GoogleFormParser:
             if q_type_code == 8:
                 page_count += 1
                 continue
+
+            # Check for native Google Forms File Upload question (type 13)
+            if q_type_code == 13:
+                is_req = False
+                if len(item) > 4 and isinstance(item[4], list) and len(item[4]) > 0:
+                    if len(item[4][0]) > 2:
+                        is_req = bool(item[4][0][2])
+                self.file_upload_items.append({
+                    "title": q_title,
+                    "required": is_req,
+                    "is_native_upload": True
+                })
+                continue
+
+            # Also detect if title implies file/document/photo upload
+            title_lower = q_title.lower()
+            upload_keywords = ["upload", "unggah", "lampirkan", "lampiran", "bukti transfer", "bukti bayar", "foto ktp", "upload file", "upload berkas"]
+            if any(k in title_lower for k in upload_keywords):
+                is_req = False
+                if len(item) > 4 and isinstance(item[4], list) and len(item[4]) > 0:
+                    if len(item[4][0]) > 2:
+                        is_req = bool(item[4][0][2])
+                self.file_upload_items.append({
+                    "title": q_title,
+                    "required": is_req,
+                    "is_native_upload": False
+                })
 
             # Check for entry details in item[4]
             if len(item) > 4 and isinstance(item[4], list) and len(item[4]) > 0:
@@ -152,5 +181,7 @@ class GoogleFormParser:
             "view_url": self.view_url,
             "response_url": self.response_url,
             "page_history": page_history,
-            "questions": self.questions
+            "questions": self.questions,
+            "has_file_upload": len(self.file_upload_items) > 0,
+            "file_upload_items": self.file_upload_items
         }

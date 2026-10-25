@@ -152,7 +152,22 @@ class handler(BaseHTTPRequestHandler):
                 if len(form_data["questions"]) > 5:
                     q_summary.append(f"_...dan {len(form_data['questions']) - 5} pertanyaan lainnya_")
 
+                # Detect File Upload warning
+                file_alert = ""
+                if form_data.get("has_file_upload"):
+                    items_desc = []
+                    for it in form_data.get("file_upload_items", []):
+                        req_str = "*(Wajib)*" if it.get("required") else "*(Opsional)*"
+                        items_desc.append(f"  • 📁 *{it['title']}* {req_str}")
+                    file_alert = (
+                        "⚠️ *PERINGATAN: MEMERLUKAN INPUT/UPLOAD FILE!* ⚠️\n"
+                        "Formulir ini memiliki bagian penting yang meminta unggahan berkas/file:\n"
+                        + "\n".join(items_desc) + "\n\n"
+                        "ℹ️ _Pemberitahuan: Bagian upload berkas biasanya wajib Anda lakukan sendiri secara manual karena memerlukan file fisik/login Google Drive._\n\n"
+                    )
+
                 summary_text = (
+                    f"{file_alert}"
                     f"📋 *Form Ditemukan!*\n"
                     f"📌 *Judul:* {form_data['title'] or 'Tanpa Judul'}\n"
                     f"📝 *Pertanyaan:* {len(form_data['questions'])} item\n\n"
