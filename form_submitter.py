@@ -105,3 +105,38 @@ class FormSubmitter:
             "success": success_count,
             "failed": fail_count
         }
+
+    def submit_concurrent(self, batch_data: List[Dict[str, List[str]]], max_workers: int = 5) -> Dict[str, int]:
+        """
+        Fast concurrent submission optimized for serverless environments (Vercel / Supabase Edge)
+        where execution timeouts (e.g. 15-30s) exist.
+        """
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        total = len(batch_data)
+        success_count = 0
+        fail_count = 0
+
+        def worker_task(submission):
+            # slight jitter
+            time.sleep(random.uniform(0.05, 0.3))
+            with requests.Session() as s:
+                return self.submit_single(submission, session=s)
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(worker_task, sub) for sub in batch_data]
+            for future in as_completed(futures):
+                try:
+                    if future.result():
+                        success_count += 1
+                    else:
+                        fail_count += 1
+                except Exception:
+                    fail_count += 1
+
+        return {
+            "total": total,
+            "success": success_count,
+            "failed": fail_count
+        }
+
