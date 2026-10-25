@@ -227,7 +227,8 @@ class handler(BaseHTTPRequestHandler):
                     batch_answers = generator.generate_batch(form_data["questions"], count)
 
                     # Submit fast concurrently
-                    submitter = FormSubmitter(form_data["response_url"])
+                    page_history = form_data.get("page_history", "0")
+                    submitter = FormSubmitter(form_data["response_url"], page_history=page_history)
                     result = submitter.submit_concurrent(batch_answers, max_workers=6)
 
                     # Update message with completion result

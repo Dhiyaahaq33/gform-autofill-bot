@@ -97,6 +97,7 @@ class GoogleFormParser:
             raw_items = data[1][1]
 
         self.questions = []
+        page_count = 0
         for item in raw_items:
             if not isinstance(item, list) or len(item) < 4:
                 continue
@@ -105,6 +106,11 @@ class GoogleFormParser:
             q_desc = item[2] if len(item) > 2 else ""
             q_type_code = item[3] if len(item) > 3 else 0
             q_type_name = self.QUESTION_TYPES.get(q_type_code, "other")
+
+            # Check if this item is a Page Break (Section header)
+            if q_type_code == 8:
+                page_count += 1
+                continue
 
             # Check for entry details in item[4]
             if len(item) > 4 and isinstance(item[4], list) and len(item[4]) > 0:
@@ -121,9 +127,14 @@ class GoogleFormParser:
                     
                     is_required = bool(entry_info[2]) if len(entry_info) > 2 else False
 
+                    # For grid questions (type 7), include specific row label if present
+                    row_title = q_title
+                    if q_type_code == 7 and len(entry_info) > 3 and isinstance(entry_info[3], list) and entry_info[3]:
+                        row_title = f"{q_title} [{entry_info[3][0]}]"
+
                     self.questions.append({
                         "entry_id": f"entry.{entry_id}",
-                        "title": q_title,
+                        "title": row_title,
                         "description": q_desc,
                         "type": q_type_name,
                         "type_code": q_type_code,
@@ -131,11 +142,15 @@ class GoogleFormParser:
                         "required": is_required
                     })
 
+        # Calculate pageHistory string: e.g. "0,1,2,3,4,5" if 5 page breaks exist
+        page_history = ",".join(str(p) for p in range(page_count + 1))
+
         return {
             "form_id": self.form_id,
             "title": self.title,
             "description": self.description,
             "view_url": self.view_url,
             "response_url": self.response_url,
+            "page_history": page_history,
             "questions": self.questions
         }

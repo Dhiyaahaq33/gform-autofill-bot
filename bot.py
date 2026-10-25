@@ -218,7 +218,8 @@ def start_filling_process(update: Update, context: CallbackContext, user_id: int
             )
 
             # 2. Submit responses with live progress update
-            submitter = FormSubmitter(form_data["response_url"])
+            page_history = form_data.get("page_history", "0")
+            submitter = FormSubmitter(form_data["response_url"], page_history=page_history)
             last_update_time = [0.0]
 
             def on_progress(current: int, total: int, is_success: bool):

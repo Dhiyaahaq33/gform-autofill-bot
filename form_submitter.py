@@ -21,8 +21,9 @@ class FormSubmitter:
     with human-like headers, randomized delays, and status callbacks.
     """
 
-    def __init__(self, response_url: str):
+    def __init__(self, response_url: str, page_history: str = "0"):
         self.response_url = response_url
+        self.page_history = page_history
 
     def submit_single(self, submission_dict: Dict[str, List[str]], session: Optional[requests.Session] = None) -> bool:
         """
@@ -50,7 +51,7 @@ class FormSubmitter:
         # Standard Google Form hidden tokens
         payload.append(("fvv", "1"))
         payload.append(("draftResponse", "[]"))
-        payload.append(("pageHistory", "0"))
+        payload.append(("pageHistory", self.page_history))
         payload.append(("fbzx", str(random.randint(1000000000000000000, 9999999999999999999))))
 
         try:
